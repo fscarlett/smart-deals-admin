@@ -1,0 +1,16 @@
+.active_link {
+  padding: 16px 16px;
+  background-color: #aff;
+  color: #333;
+}
+.default_link {
+  text-decoration: none;
+  padding: 16px 16px;
+  color: #fff;
+}
+
+.default_link:hover {
+  background-color: #555;
+  color: #fff;
+  text-decoration: underline;
+}
