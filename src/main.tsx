@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { ClerkProvider } from '@clerk/react'
+import { ui } from '@clerk/ui'
 import { BrowserRouter, Route, Routes } from 'react-router'
 
 import ProtectedRoute from './components/auth/ProtectedRoute.tsx'
@@ -12,7 +13,10 @@ import CategoriesPage from './pages/Categories.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
+    <ClerkProvider
+      publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
+      ui={ui}
+    >
       <BrowserRouter>
         <Layout>
           <Routes>
