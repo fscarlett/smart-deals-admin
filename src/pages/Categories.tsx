@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-
+import { useAuth } from '@clerk/react'
 interface Category {
   _id: string
   category_slug: string
@@ -12,6 +12,8 @@ interface Category {
 }
 
 function CategoriesPage() {
+  const { isLoaded, isSignedIn, userId, sessionId, getToken } = useAuth()
+
   const [categories, setCategories] = useState<Category[]>([])
 
   useEffect(() => {
@@ -32,6 +34,10 @@ function CategoriesPage() {
     fetchCategories()
   }, [])
 
+  if (!isSignedIn) {
+    return <div>Redirect to /</div>
+  }
+
   return (
     <div className='container'>
       <h1 className='text-2xl font-bold mb-6 mt-6'>Categories</h1>
@@ -39,34 +45,32 @@ function CategoriesPage() {
         {categories.map((cat) => (
           <li
             key={cat._id}
-            className='flex flex-wrap gap-6 py-3 mb-7 border-b-2 border-gray-300'
+            className='text-sm flex flex-col gap-6 py-3 mb-8 border-b-1 border-gray-600'
           >
-            <span>
-              <strong>ID:</strong> {cat._id}
-            </span>
-            <span>
-              <strong>Slug:</strong> {cat.category_slug}
-            </span>
-            <span>
-              <strong>Name:</strong> {cat.category_display_name}
-            </span>
-            <span>
-              <strong>Order:</strong> {cat.category_order}
-            </span>
-            <span>
-              <strong>Active:</strong> {cat.is_active ? 'Yes' : 'No'}
-            </span>
-            <span>
-              <strong>Created:</strong>{' '}
-              {new Date(cat.createdAt).toLocaleString()}
-            </span>
-            <span>
-              <strong>Updated:</strong>{' '}
-              {new Date(cat.updatedAt).toLocaleString()}
-            </span>
-            <span>
+            <div className='text-sm flex flex-wrap gap-6 py-3'>
+              <span>
+                <strong>ID:</strong> {cat._id}
+              </span>
+              <span>
+                <strong>Slug:</strong> {cat.category_slug}
+              </span>
+              <span>
+                <strong>Name:</strong> {cat.category_display_name}
+              </span>
+              <span>
+                <strong>Order:</strong> {cat.category_order}
+              </span>
+              <span>
+                <strong>Active:</strong> {cat.is_active ? 'Yes' : 'No'}
+              </span>
+            </div>
+            <div className='text-xs italic gap-4 flex flex-wrap'>
+              <span>Created: {new Date(cat.createdAt).toLocaleString()} </span>
+              <span>Updated: {new Date(cat.updatedAt).toLocaleString()} </span>
+            </div>
+            {/* <span>
               <strong>__v:</strong> {cat.__v}
-            </span>
+            </span> */}
           </li>
         ))}
       </ul>

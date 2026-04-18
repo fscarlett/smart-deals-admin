@@ -1,8 +1,13 @@
+.site_header {
+  height: 58px;
+}
+
 .active_link {
   padding: 16px 16px;
   background-color: #aff;
   color: #333;
 }
+
 .default_link {
   text-decoration: none;
   padding: 16px 16px;

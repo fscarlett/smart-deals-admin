@@ -5,15 +5,17 @@ import styles from '../../styles/Header.module.css'
 
 function Header() {
   return (
-    <header className='px-4 bg-gray-800 '>
-      <div className='container max-w-7xl mx-auto flex justify-between items-center'>
+    <header className='site_header px-4 bg-gray-800 '>
+      <div className='container max-w-7xl mx-auto flex justify-between items-center h-[58px]'>
         <div>
           <h1 className='text-lg'>iQ Smart Deals Admin</h1>
         </div>
         <div>
           <Show when='signed-out'>
-            <SignInButton />
-            {/* <SignUpButton /> */}
+            <div className={styles.default_link}>
+              <SignInButton />
+              {/* <SignUpButton /> */}
+            </div>
           </Show>
           <Show when='signed-in'>
             <div className='flex items-center space-x-4'>
