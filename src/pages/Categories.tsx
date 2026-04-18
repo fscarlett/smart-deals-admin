@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useAuth } from '@clerk/react'
 interface Category {
   _id: string
   category_slug: string
@@ -12,8 +11,6 @@ interface Category {
 }
 
 function CategoriesPage() {
-  const { isLoaded, isSignedIn, userId, sessionId, getToken } = useAuth()
-
   const [categories, setCategories] = useState<Category[]>([])
 
   useEffect(() => {
@@ -33,10 +30,6 @@ function CategoriesPage() {
 
     fetchCategories()
   }, [])
-
-  if (!isSignedIn) {
-    return <div>Redirect to /</div>
-  }
 
   return (
     <div className='container'>
