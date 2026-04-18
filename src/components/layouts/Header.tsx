@@ -26,7 +26,10 @@ function Header() {
     <header className='site_header px-4 bg-gray-800 '>
       <div className='container max-w-7xl mx-auto flex justify-between items-center h-[58px]'>
         <div>
-          <h1 className='text-lg'>iQ Smart Deals Admin</h1>
+          <NavLink to='/'>
+            {/* <img src='/logo.png' alt='Logo' className='h-8 w-auto' /> */}
+            <h1 className={`${styles.logo} text-lg`}>iQ Smart Deals Admin</h1>
+          </NavLink>
         </div>
         <div>
           <Show when='signed-out'>

@@ -2,6 +2,18 @@
   height: 58px;
 }
 
+.logo {
+  text-decoration: none;
+  padding: 16px 16px;
+  color: #aff;
+}
+
+.logo:hover {
+  background-color: #555;
+  color: #fff;
+  text-decoration: underline;
+}
+
 .active_link {
   padding: 16px 16px;
   background-color: #aff;
