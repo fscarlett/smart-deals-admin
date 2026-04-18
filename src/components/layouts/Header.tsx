@@ -1,9 +1,27 @@
 import { Show, SignInButton, UserButton } from '@clerk/react'
-import { NavLink } from 'react-router'
+import { NavLink, useLocation } from 'react-router'
 
 import styles from '../../styles/Header.module.css'
 
 function Header() {
+  const location = useLocation()
+
+  const from =
+    location.state &&
+    typeof location.state === 'object' &&
+    'from' in location.state &&
+    location.state.from &&
+    typeof location.state.from === 'object'
+      ? location.state.from
+      : null
+
+  const returnTo =
+    from && 'pathname' in from && typeof from.pathname === 'string'
+      ? `${from.pathname}${
+          'search' in from && typeof from.search === 'string' ? from.search : ''
+        }${'hash' in from && typeof from.hash === 'string' ? from.hash : ''}`
+      : '/'
+
   return (
     <header className='site_header px-4 bg-gray-800 '>
       <div className='container max-w-7xl mx-auto flex justify-between items-center h-[58px]'>
@@ -13,7 +31,10 @@ function Header() {
         <div>
           <Show when='signed-out'>
             <div className={styles.default_link}>
-              <SignInButton />
+              <SignInButton
+                forceRedirectUrl={returnTo}
+                fallbackRedirectUrl='/'
+              />
               {/* <SignUpButton /> */}
             </div>
           </Show>
