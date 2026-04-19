@@ -209,9 +209,7 @@ function DealsPage() {
       <div className='flex flex-col gap-2 mb-6 mt-6 sm:flex-row sm:items-end sm:justify-between'>
         <div>
           <h1 className='text-2xl font-bold'>Deals</h1>
-          <p className='text-sm text-gray-400'>
-            Displaying all fields for each deal record.
-          </p>
+          <p className='text-sm text-gray-400'>Displaying deal records.</p>
         </div>
         <p className='text-sm text-gray-400'>
           {startRecord}-{endRecord} of {deals.length} deals
@@ -226,11 +224,11 @@ function DealsPage() {
           <ul className='list-none p-0 m-0'>
             {paginatedDeals.map((deal) => (
               <li key={deal._id} className='py-4 border-b border-gray-600'>
-                <div className='flex flex-wrap items-center gap-3 mb-4'>
+                <div className='flex flex-wrap items-center gap-3 mb-2'>
                   {INLINE_FIELDS.map((fieldName) => (
                     <div
                       key={fieldName}
-                      className='inline-flex items-center gap-2 rounded-full bg-gray-900/40 px-3 py-1.5 text-sm'
+                      className='inline-flex items-center gap-1 rounded-full bg-gray-900/40 py-0 pr-2 text-sm'
                     >
                       <span className='font-semibold text-gray-300'>
                         {formatFieldLabel(fieldName)}:
@@ -262,7 +260,7 @@ function DealsPage() {
                     ))}
                 </div>
 
-                <div className='mt-4 flex flex-wrap gap-4 text-xs italic text-gray-300'>
+                <div className='mt-0 flex flex-wrap gap-4 text-xs italic text-gray-300'>
                   {META_DATE_FIELDS.map((fieldName) => (
                     <div key={fieldName}>
                       <span className='font-semibold'>
