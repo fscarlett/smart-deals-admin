@@ -365,12 +365,16 @@ function DealsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
   const [editingDeal, setEditingDeal] = useState<DealRecord | null>(null)
+  const [deletingDeal, setDeletingDeal] = useState<DealRecord | null>(null)
   const [formValues, setFormValues] = useState<Record<string, DealFormValue>>(
     {},
   )
   const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [saveErrorMessage, setSaveErrorMessage] = useState('')
   const [saveSuccessMessage, setSaveSuccessMessage] = useState('')
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState('')
+  const [deleteSuccessMessage, setDeleteSuccessMessage] = useState('')
   const modalBodyRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -466,6 +470,19 @@ function DealsPage() {
     setSaveSuccessMessage('')
   }
 
+  function openDeleteModal(deal: DealRecord) {
+    setDeletingDeal(deal)
+    setDeleteErrorMessage('')
+    setDeleteSuccessMessage('')
+  }
+
+  function closeDeleteModal() {
+    setDeletingDeal(null)
+    setIsDeleting(false)
+    setDeleteErrorMessage('')
+    setDeleteSuccessMessage('')
+  }
+
   function handleFieldChange(fieldName: string, value: DealFormValue) {
     setFormValues((currentValues) => ({
       ...currentValues,
@@ -473,9 +490,7 @@ function DealsPage() {
     }))
   }
 
-  async function handleSaveEdits(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
+  async function handleSaveEdits() {
     if (!editingDeal) {
       return
     }
@@ -553,6 +568,59 @@ function DealsPage() {
     }
   }
 
+  async function handleDeleteDeal() {
+    if (!deletingDeal) {
+      return
+    }
+
+    try {
+      setIsDeleting(true)
+      setDeleteErrorMessage('')
+      setDeleteSuccessMessage('')
+
+      const response = await fetch(
+        `http://localhost:5000/api/v1/deals/${deletingDeal._id}`,
+        {
+          method: 'DELETE',
+        },
+      )
+
+      let responseData: unknown = null
+
+      try {
+        responseData = await response.json()
+      } catch {
+        responseData = null
+      }
+
+      if (!response.ok) {
+        const responseMessage =
+          responseData &&
+          typeof responseData === 'object' &&
+          'message' in responseData &&
+          typeof responseData.message === 'string'
+            ? responseData.message
+            : 'Failed to delete the deal.'
+
+        throw new Error(responseMessage)
+      }
+
+      setDeals((currentDeals) =>
+        currentDeals.filter((deal) => deal._id !== deletingDeal._id),
+      )
+      setDeleteSuccessMessage(
+        `${String(deletingDeal.merchant_display_name ?? 'Deal')} deleted!`,
+      )
+    } catch (error) {
+      console.error('Failed to delete deal:', error)
+      setDeleteErrorMessage(
+        error instanceof Error ? error.message : 'Failed to delete the deal.',
+      )
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   return (
     <div className='container'>
       <div className='flex flex-col gap-2 mb-6 mt-6 sm:flex-row sm:items-end sm:justify-between'>
@@ -590,13 +658,22 @@ function DealsPage() {
                     ))}
                   </div>
 
-                  <button
-                    type='button'
-                    className='shrink-0 rounded-md border border-gray-600 px-3 py-2 text-sm font-medium text-white hover:bg-gray-800'
-                    onClick={() => openEditModal(deal)}
-                  >
-                    Edit
-                  </button>
+                  <div className='flex shrink-0 items-center gap-2'>
+                    <button
+                      type='button'
+                      className='rounded-md border border-gray-600 px-3 py-2 text-sm font-medium text-white hover:bg-gray-800'
+                      onClick={() => openEditModal(deal)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type='button'
+                      className='rounded-md border border-red-700 px-3 py-2 text-sm font-medium text-red-300 hover:bg-red-950/40'
+                      onClick={() => openDeleteModal(deal)}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
 
                 <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-3'>
@@ -703,7 +780,12 @@ function DealsPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveEdits}>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault()
+                void handleSaveEdits()
+              }}
+            >
               <div
                 ref={modalBodyRef}
                 className='max-h-[75vh] overflow-y-auto px-6 py-5'
@@ -857,6 +939,79 @@ function DealsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {deletingDeal ? (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-8'>
+          <div className='w-full max-w-xl rounded-xl border border-gray-700 bg-gray-950 shadow-2xl'>
+            <div className='flex items-center justify-between border-b border-gray-800 px-6 py-4'>
+              <h2 className='text-xl font-semibold'>
+                Delete the{' '}
+                {String(deletingDeal.merchant_display_name ?? 'Unknown')} Deal?
+              </h2>
+              <button
+                type='button'
+                className='rounded-md border border-gray-700 px-3 py-2 text-sm text-gray-200 hover:bg-gray-900'
+                onClick={closeDeleteModal}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className='px-6 py-5'>
+              {deleteSuccessMessage ? (
+                <div className='mb-4 rounded-md border border-green-700 bg-green-950 px-4 py-3 text-sm text-green-300'>
+                  {deleteSuccessMessage}
+                </div>
+              ) : null}
+
+              {deleteErrorMessage ? (
+                <div className='mb-4 rounded-md border border-red-700 bg-red-950 px-4 py-3 text-sm text-red-300'>
+                  {deleteErrorMessage}
+                </div>
+              ) : null}
+
+              <div className='space-y-2 text-sm text-gray-300'>
+                <p>
+                  <span className='font-semibold text-gray-200'>
+                    Record ID:
+                  </span>{' '}
+                  <span>{String(deletingDeal._id)}</span>
+                </p>
+                <p>
+                  <span className='font-semibold text-gray-200'>
+                    Deal Slug:
+                  </span>{' '}
+                  <span>{String(deletingDeal.deal_slug ?? '')}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className='flex items-center justify-end gap-3 border-t border-gray-800 px-6 py-4'>
+              {!deleteSuccessMessage ? (
+                <button
+                  type='button'
+                  className='rounded-md border border-gray-700 px-4 py-2 text-sm text-gray-200 hover:bg-gray-900'
+                  onClick={closeDeleteModal}
+                >
+                  Cancel
+                </button>
+              ) : null}
+              {!deleteSuccessMessage ? (
+                <button
+                  type='button'
+                  className='rounded-md bg-red-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60'
+                  onClick={() => {
+                    void handleDeleteDeal()
+                  }}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete Forever'}
+                </button>
+              ) : null}
+            </div>
           </div>
         </div>
       ) : null}
