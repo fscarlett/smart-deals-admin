@@ -7,6 +7,22 @@ type DealRecord = {
 
 type DealFormValue = string | boolean
 
+type DealFieldType =
+  | 'string'
+  | 'boolean'
+  | 'number'
+  | 'date'
+  | 'select'
+  | 'textarea'
+  | 'category'
+
+type DealFieldDefinition = {
+  name: string
+  type: DealFieldType
+  defaultValue: DealFormValue
+  options?: string[]
+}
+
 type DealCategory = {
   _id?: string
   category_slug?: string
@@ -19,7 +35,43 @@ type DealCategory = {
 }
 
 const DEALS_PER_PAGE = 20
-const EDIT_EXCLUDED_FIELDS = new Set(['_id', '__v', 'createdAt', 'updatedAt'])
+
+const DEAL_FORM_FIELDS: DealFieldDefinition[] = [
+  { name: 'deal_slug', type: 'string', defaultValue: '' },
+  { name: 'merchant_display_name', type: 'string', defaultValue: '' },
+  { name: 'merchant_code', type: 'string', defaultValue: '' },
+  { name: 'deal_code', type: 'string', defaultValue: '' },
+  { name: 'is_in_hero', type: 'boolean', defaultValue: false },
+  { name: 'is_featured', type: 'boolean', defaultValue: false },
+  { name: 'is_featured_secondary', type: 'boolean', defaultValue: false },
+  { name: 'deal_cashback_percent', type: 'number', defaultValue: '1' },
+  { name: 'deal_pill_text', type: 'string', defaultValue: '' },
+  {
+    name: 'deal_cta_text',
+    type: 'select',
+    defaultValue: 'Get Deal',
+    options: ['Get Deal', 'Shop Now'],
+  },
+  {
+    name: 'coupon_type',
+    type: 'select',
+    defaultValue: '',
+    options: ['', '$10', '$4', '17%', '20%', '30%'],
+  },
+  { name: 'description', type: 'textarea', defaultValue: '' },
+  { name: 'category', type: 'category', defaultValue: '' },
+  { name: 'startDate', type: 'date', defaultValue: '' },
+  { name: 'endDate', type: 'date', defaultValue: '' },
+  { name: 'isActive', type: 'boolean', defaultValue: true },
+  { name: 'deal_url', type: 'textarea', defaultValue: '' },
+  { name: 'logo_img_url', type: 'textarea', defaultValue: '' },
+  { name: 'logo_bg_color', type: 'string', defaultValue: '' },
+  { name: 'img_thumbnail_url', type: 'textarea', defaultValue: '' },
+  { name: 'img_full_url', type: 'textarea', defaultValue: '' },
+  { name: 'img_mob_url', type: 'textarea', defaultValue: '' },
+  { name: 'deal_copy_desktop', type: 'textarea', defaultValue: '' },
+  { name: 'deal_copy_mob', type: 'textarea', defaultValue: '' },
+]
 
 const HIDDEN_FIELDS = new Set([
   '_id',
@@ -64,30 +116,53 @@ const META_DATE_FIELDS = ['createdAt', 'updatedAt'] as const
 
 function createFormValues(deal: DealRecord) {
   return Object.fromEntries(
-    Object.entries(deal)
-      .filter(([fieldName]) => !EDIT_EXCLUDED_FIELDS.has(fieldName))
-      .map(([fieldName, value]) => [
-        fieldName,
-        serializeFormValue(fieldName, value),
-      ]),
+    DEAL_FORM_FIELDS.map((field) => [
+      field.name,
+      serializeFormValue(field, deal[field.name]),
+    ]),
   ) as Record<string, DealFormValue>
 }
 
-function serializeFormValue(fieldName: string, value: unknown): DealFormValue {
-  if (fieldName === 'category') {
+function formatDateInputValue(value: unknown) {
+  if (typeof value !== 'string' || value.trim() === '') {
+    return ''
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+
+  const year = date.getUTCFullYear()
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(date.getUTCDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+function serializeFormValue(
+  field: DealFieldDefinition,
+  value: unknown,
+): DealFormValue {
+  if (field.type === 'category') {
     if (!Array.isArray(value) || value.length === 0) {
-      return ''
+      return field.defaultValue
     }
 
     const firstCategory = value[0]
 
     if (!firstCategory || typeof firstCategory !== 'object') {
-      return ''
+      return field.defaultValue
     }
 
     return '_id' in firstCategory && typeof firstCategory._id === 'string'
       ? firstCategory._id
-      : ''
+      : field.defaultValue
+  }
+
+  if (field.type === 'date') {
+    return formatDateInputValue(value)
   }
 
   if (typeof value === 'boolean') {
@@ -95,7 +170,7 @@ function serializeFormValue(fieldName: string, value: unknown): DealFormValue {
   }
 
   if (value === null || value === undefined) {
-    return ''
+    return field.defaultValue
   }
 
   if (typeof value === 'object') {
@@ -106,12 +181,11 @@ function serializeFormValue(fieldName: string, value: unknown): DealFormValue {
 }
 
 function parseFormValue(
-  fieldName: string,
+  field: DealFieldDefinition,
   value: DealFormValue,
-  originalValue: unknown,
   categories: DealCategory[],
 ) {
-  if (fieldName === 'category') {
+  if (field.type === 'category') {
     if (typeof value !== 'string' || value.trim() === '') {
       return []
     }
@@ -127,13 +201,13 @@ function parseFormValue(
     return [selectedCategory._id]
   }
 
-  if (typeof originalValue === 'boolean') {
+  if (field.type === 'boolean') {
     return Boolean(value)
   }
 
-  if (typeof originalValue === 'number') {
+  if (field.type === 'number') {
     if (typeof value !== 'string' || value.trim() === '') {
-      return 0
+      return Number(field.defaultValue)
     }
 
     const parsedNumber = Number(value)
@@ -145,60 +219,15 @@ function parseFormValue(
     return parsedNumber
   }
 
-  if (Array.isArray(originalValue)) {
-    if (typeof value !== 'string' || value.trim() === '') {
-      return []
-    }
-
-    const parsedArray = JSON.parse(value)
-
-    if (!Array.isArray(parsedArray)) {
-      throw new Error('An array field must contain valid JSON array data.')
-    }
-
-    return parsedArray
-  }
-
-  if (originalValue && typeof originalValue === 'object') {
+  if (field.type === 'date') {
     if (typeof value !== 'string' || value.trim() === '') {
       return null
     }
 
-    const parsedObject = JSON.parse(value)
-
-    if (
-      !parsedObject ||
-      typeof parsedObject !== 'object' ||
-      Array.isArray(parsedObject)
-    ) {
-      throw new Error('An object field must contain valid JSON object data.')
-    }
-
-    return parsedObject
+    return value
   }
 
   return typeof value === 'string' ? value : String(value)
-}
-
-function shouldUseTextarea(fieldName: string, value: unknown) {
-  if (fieldName === 'category') {
-    return false
-  }
-
-  if (Array.isArray(value) || (value !== null && typeof value === 'object')) {
-    return true
-  }
-
-  if (typeof value !== 'string') {
-    return false
-  }
-
-  return (
-    value.length > 60 ||
-    fieldName === 'description' ||
-    fieldName.includes('copy') ||
-    fieldName.includes('url')
-  )
 }
 
 function formatCategoryValue(value: unknown) {
@@ -414,14 +443,12 @@ function DealsPage() {
     deals.length === 0 ? 0 : (currentPage - 1) * DEALS_PER_PAGE + 1
   const endRecord = Math.min(currentPage * DEALS_PER_PAGE, deals.length)
 
-  const editableFieldEntries = useMemo(() => {
+  const editableFields = useMemo(() => {
     if (!editingDeal) {
-      return [] as Array<[string, unknown]>
+      return [] as DealFieldDefinition[]
     }
 
-    return Object.entries(editingDeal).filter(
-      ([fieldName]) => !EDIT_EXCLUDED_FIELDS.has(fieldName),
-    )
+    return DEAL_FORM_FIELDS
   }, [editingDeal])
 
   function openEditModal(deal: DealRecord) {
@@ -461,14 +488,9 @@ function DealsPage() {
       setSaveSuccessMessage('')
 
       const payload = Object.fromEntries(
-        editableFieldEntries.map(([fieldName, originalValue]) => [
-          fieldName,
-          parseFormValue(
-            fieldName,
-            formValues[fieldName],
-            originalValue,
-            categories,
-          ),
+        editableFields.map((field) => [
+          field.name,
+          parseFormValue(field, formValues[field.name], categories),
         ]),
       )
 
@@ -699,20 +721,19 @@ function DealsPage() {
                 ) : null}
 
                 <div className='grid gap-5 md:grid-cols-2'>
-                  {editableFieldEntries.map(([fieldName, originalValue]) => {
-                    const formValue = formValues[fieldName]
-                    const textarea = shouldUseTextarea(fieldName, originalValue)
+                  {editableFields.map((field) => {
+                    const formValue = formValues[field.name]
 
                     return (
                       <label
-                        key={fieldName}
+                        key={field.name}
                         className='flex flex-col gap-2 text-sm'
                       >
                         <span className='font-semibold text-gray-200'>
-                          {formatFieldLabel(fieldName)}
+                          {formatFieldLabel(field.name)}
                         </span>
 
-                        {fieldName === 'category' ? (
+                        {field.type === 'category' ? (
                           <select
                             className='rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-white outline-none focus:border-gray-500'
                             value={
@@ -721,7 +742,7 @@ function DealsPage() {
                                 : String(formValue)
                             }
                             onChange={(event) =>
-                              handleFieldChange(fieldName, event.target.value)
+                              handleFieldChange(field.name, event.target.value)
                             }
                           >
                             <option value=''>Select a category</option>
@@ -731,16 +752,19 @@ function DealsPage() {
                               </option>
                             ))}
                           </select>
-                        ) : typeof originalValue === 'boolean' ? (
+                        ) : field.type === 'boolean' ? (
                           <input
                             type='checkbox'
                             className='h-4 w-4 rounded border-gray-600 bg-gray-900 accent-white'
                             checked={Boolean(formValue)}
                             onChange={(event) =>
-                              handleFieldChange(fieldName, event.target.checked)
+                              handleFieldChange(
+                                field.name,
+                                event.target.checked,
+                              )
                             }
                           />
-                        ) : textarea ? (
+                        ) : field.type === 'textarea' ? (
                           <textarea
                             className='min-h-32 rounded-md border border-gray-700 bg-gray-900 px-3 py-2 font-mono text-sm text-white outline-none focus:border-gray-500'
                             value={
@@ -749,21 +773,11 @@ function DealsPage() {
                                 : String(formValue)
                             }
                             onChange={(event) =>
-                              handleFieldChange(fieldName, event.target.value)
+                              handleFieldChange(field.name, event.target.value)
                             }
                           />
-                        ) : (
-                          <input
-                            type={
-                              typeof originalValue === 'number'
-                                ? 'number'
-                                : 'text'
-                            }
-                            step={
-                              typeof originalValue === 'number'
-                                ? 'any'
-                                : undefined
-                            }
+                        ) : field.type === 'select' ? (
+                          <select
                             className='rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-white outline-none focus:border-gray-500'
                             value={
                               typeof formValue === 'string'
@@ -771,7 +785,33 @@ function DealsPage() {
                                 : String(formValue)
                             }
                             onChange={(event) =>
-                              handleFieldChange(fieldName, event.target.value)
+                              handleFieldChange(field.name, event.target.value)
+                            }
+                          >
+                            {field.options?.map((option) => (
+                              <option key={option || 'empty'} value={option}>
+                                {option || 'None'}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type={
+                              field.type === 'number'
+                                ? 'number'
+                                : field.type === 'date'
+                                  ? 'date'
+                                  : 'text'
+                            }
+                            step={field.type === 'number' ? 'any' : undefined}
+                            className='rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-white outline-none focus:border-gray-500'
+                            value={
+                              typeof formValue === 'string'
+                                ? formValue
+                                : String(formValue)
+                            }
+                            onChange={(event) =>
+                              handleFieldChange(field.name, event.target.value)
                             }
                           />
                         )}
