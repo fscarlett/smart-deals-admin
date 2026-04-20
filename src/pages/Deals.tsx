@@ -73,6 +73,8 @@ const DEAL_FORM_FIELDS: DealFieldDefinition[] = [
   { name: 'deal_copy_mob', type: 'textarea', defaultValue: '' },
 ]
 
+const REQUIRED_CREATE_FIELDS = new Set(['deal_slug', 'merchant_display_name'])
+
 const HIDDEN_FIELDS = new Set([
   '_id',
   'deal_slug',
@@ -227,6 +229,14 @@ function parseFormValue(
     return value
   }
 
+  if (field.type === 'select') {
+    if (typeof value !== 'string' || value.trim() === '') {
+      return undefined
+    }
+
+    return value
+  }
+
   return typeof value === 'string' ? value : String(value)
 }
 
@@ -358,24 +368,34 @@ function normalizeDealRecordCategories(
   }
 }
 
+function createEmptyDealRecord() {
+  return { _id: '' } as DealRecord
+}
+
 function DealsPage() {
   const [deals, setDeals] = useState<DealRecord[]>([])
   const [categories, setCategories] = useState<DealCategory[]>([])
   const [currentPage, setCurrentPage] = useState(1)
+  const [highlightedDealId, setHighlightedDealId] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
   const [editingDeal, setEditingDeal] = useState<DealRecord | null>(null)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [deletingDeal, setDeletingDeal] = useState<DealRecord | null>(null)
   const [formValues, setFormValues] = useState<Record<string, DealFormValue>>(
     {},
   )
   const [isSaving, setIsSaving] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [saveErrorMessage, setSaveErrorMessage] = useState('')
   const [saveSuccessMessage, setSaveSuccessMessage] = useState('')
+  const [createErrorMessage, setCreateErrorMessage] = useState('')
+  const [createSuccessMessage, setCreateSuccessMessage] = useState('')
   const [deleteErrorMessage, setDeleteErrorMessage] = useState('')
   const [deleteSuccessMessage, setDeleteSuccessMessage] = useState('')
   const modalBodyRef = useRef<HTMLDivElement | null>(null)
+  const createModalBodyRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const fetchDeals = async () => {
@@ -454,6 +474,23 @@ function DealsPage() {
 
     return DEAL_FORM_FIELDS
   }, [editingDeal])
+
+  const createFields = DEAL_FORM_FIELDS
+
+  function openCreateModal() {
+    setIsCreateModalOpen(true)
+    setFormValues(createFormValues(createEmptyDealRecord()))
+    setCreateErrorMessage('')
+    setCreateSuccessMessage('')
+  }
+
+  function closeCreateModal() {
+    setIsCreateModalOpen(false)
+    setFormValues({})
+    setIsCreating(false)
+    setCreateErrorMessage('')
+    setCreateSuccessMessage('')
+  }
 
   function openEditModal(deal: DealRecord) {
     setEditingDeal(deal)
@@ -568,6 +605,75 @@ function DealsPage() {
     }
   }
 
+  async function handleCreateDeal() {
+    createModalBodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+
+    try {
+      setIsCreating(true)
+      setCreateErrorMessage('')
+      setCreateSuccessMessage('')
+
+      const payload = Object.fromEntries(
+        createFields.map((field) => [
+          field.name,
+          parseFormValue(field, formValues[field.name], categories),
+        ]),
+      )
+
+      const response = await fetch('http://localhost:5000/api/v1/deals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      })
+
+      let responseData: unknown = null
+
+      try {
+        responseData = await response.json()
+      } catch {
+        responseData = null
+      }
+
+      if (!response.ok) {
+        const responseMessage =
+          responseData &&
+          typeof responseData === 'object' &&
+          'message' in responseData &&
+          typeof responseData.message === 'string'
+            ? responseData.message
+            : 'Failed to create the deal.'
+
+        throw new Error(responseMessage)
+      }
+
+      const createdDeal =
+        responseData &&
+        typeof responseData === 'object' &&
+        'data' in responseData &&
+        responseData.data &&
+        typeof responseData.data === 'object'
+          ? normalizeDealRecordCategories(
+              responseData.data as DealRecord,
+              categories,
+            )
+          : normalizeDealRecordCategories(payload as DealRecord, categories)
+
+      setDeals((currentDeals) => [createdDeal, ...currentDeals])
+      setHighlightedDealId(createdDeal._id)
+      setCurrentPage(1)
+      closeCreateModal()
+    } catch (error) {
+      console.error('Failed to create deal:', error)
+      setCreateErrorMessage(
+        error instanceof Error ? error.message : 'Failed to create the deal.',
+      )
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
   async function handleDeleteDeal() {
     if (!deletingDeal) {
       return
@@ -627,6 +733,15 @@ function DealsPage() {
         <div>
           <h1 className='text-2xl font-bold'>Deals</h1>
           <p className='text-sm text-gray-400'>Displaying deal records.</p>
+          <div className='mt-4'>
+            <button
+              type='button'
+              className='rounded-md bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-gray-200'
+              onClick={openCreateModal}
+            >
+              Create New Deal
+            </button>
+          </div>
         </div>
         <p className='text-sm text-gray-400'>
           {startRecord}-{endRecord} of {deals.length} deals
@@ -640,7 +755,12 @@ function DealsPage() {
         <>
           <ul className='list-none p-0 m-0'>
             {paginatedDeals.map((deal) => (
-              <li key={deal._id} className='py-4 border-b border-gray-600'>
+              <li
+                key={deal._id}
+                className={`border-b border-gray-600 py-4 transition-colors ${
+                  deal._id === highlightedDealId ? 'bg-gray-800/50' : ''
+                }`}
+              >
                 <div className='mb-2 flex items-start justify-between gap-4'>
                   <div className='flex flex-wrap items-center gap-3'>
                     {INLINE_FIELDS.map((fieldName) => (
@@ -759,6 +879,170 @@ function DealsPage() {
             </div>
           ) : null}
         </>
+      ) : null}
+
+      {isCreateModalOpen ? (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-8'>
+          <div className='w-full max-w-4xl rounded-xl border border-gray-700 bg-gray-950 shadow-2xl'>
+            <div className='flex items-center justify-between border-b border-gray-800 px-6 py-4'>
+              <div>
+                <h2 className='text-xl font-semibold'>Create Deal</h2>
+                <p className='text-sm text-gray-400'>Add a new deal record.</p>
+              </div>
+              <button
+                type='button'
+                className='rounded-md border border-gray-700 px-3 py-2 text-sm text-gray-200 hover:bg-gray-900'
+                onClick={closeCreateModal}
+              >
+                Close
+              </button>
+            </div>
+
+            <form
+              onSubmit={(event) => {
+                event.preventDefault()
+                void handleCreateDeal()
+              }}
+            >
+              <div
+                ref={createModalBodyRef}
+                className='max-h-[75vh] overflow-y-auto px-6 py-5'
+              >
+                {createSuccessMessage ? (
+                  <div className='mb-4 rounded-md border border-green-700 bg-green-950 px-4 py-3 text-sm text-green-300'>
+                    {createSuccessMessage}
+                  </div>
+                ) : null}
+
+                {createErrorMessage ? (
+                  <div className='mb-4 rounded-md border border-red-700 bg-red-950 px-4 py-3 text-sm text-red-300'>
+                    {createErrorMessage}
+                  </div>
+                ) : null}
+
+                <div className='grid gap-5 md:grid-cols-2'>
+                  {createFields.map((field) => {
+                    const formValue = formValues[field.name]
+
+                    return (
+                      <label
+                        key={field.name}
+                        className='flex flex-col gap-2 text-sm'
+                      >
+                        <span className='font-semibold text-gray-200'>
+                          {formatFieldLabel(field.name)}
+                          {REQUIRED_CREATE_FIELDS.has(field.name) ? (
+                            <span className='ml-1 text-red-400'>*</span>
+                          ) : null}
+                        </span>
+
+                        {field.type === 'category' ? (
+                          <select
+                            className='rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-white outline-none focus:border-gray-500'
+                            value={
+                              typeof formValue === 'string'
+                                ? formValue
+                                : String(formValue)
+                            }
+                            onChange={(event) =>
+                              handleFieldChange(field.name, event.target.value)
+                            }
+                          >
+                            <option value=''>Select a category</option>
+                            {categories.map((category) => (
+                              <option key={category._id} value={category._id}>
+                                {category.category_display_name}
+                              </option>
+                            ))}
+                          </select>
+                        ) : field.type === 'boolean' ? (
+                          <input
+                            type='checkbox'
+                            className='h-4 w-4 rounded border-gray-600 bg-gray-900 accent-white'
+                            checked={Boolean(formValue)}
+                            onChange={(event) =>
+                              handleFieldChange(
+                                field.name,
+                                event.target.checked,
+                              )
+                            }
+                          />
+                        ) : field.type === 'textarea' ? (
+                          <textarea
+                            className='min-h-32 rounded-md border border-gray-700 bg-gray-900 px-3 py-2 font-mono text-sm text-white outline-none focus:border-gray-500'
+                            value={
+                              typeof formValue === 'string'
+                                ? formValue
+                                : String(formValue)
+                            }
+                            onChange={(event) =>
+                              handleFieldChange(field.name, event.target.value)
+                            }
+                          />
+                        ) : field.type === 'select' ? (
+                          <select
+                            className='rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-white outline-none focus:border-gray-500'
+                            value={
+                              typeof formValue === 'string'
+                                ? formValue
+                                : String(formValue)
+                            }
+                            onChange={(event) =>
+                              handleFieldChange(field.name, event.target.value)
+                            }
+                          >
+                            {field.options?.map((option) => (
+                              <option key={option || 'empty'} value={option}>
+                                {option || 'None'}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type={
+                              field.type === 'number'
+                                ? 'number'
+                                : field.type === 'date'
+                                  ? 'date'
+                                  : 'text'
+                            }
+                            step={field.type === 'number' ? 'any' : undefined}
+                            className='rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-white outline-none focus:border-gray-500'
+                            value={
+                              typeof formValue === 'string'
+                                ? formValue
+                                : String(formValue)
+                            }
+                            onChange={(event) =>
+                              handleFieldChange(field.name, event.target.value)
+                            }
+                          />
+                        )}
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className='flex items-center justify-end gap-3 border-t border-gray-800 px-6 py-4'>
+                <button
+                  type='button'
+                  className='rounded-md border border-gray-700 px-4 py-2 text-sm text-gray-200 hover:bg-gray-900'
+                  onClick={closeCreateModal}
+                >
+                  Cancel
+                </button>
+                <button
+                  type='submit'
+                  className='rounded-md bg-white px-4 py-2 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:opacity-60'
+                  disabled={isCreating}
+                >
+                  {isCreating ? 'Creating...' : 'Create Deal'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       ) : null}
 
       {editingDeal ? (
