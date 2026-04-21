@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { buildApiUrl } from '../api'
 
 type DealRecord = {
   _id: string
@@ -404,8 +405,8 @@ function DealsPage() {
         setErrorMessage('')
 
         const [dealsResponse, categoriesResponse] = await Promise.all([
-          fetch('http://localhost:5000/api/v1/deals'),
-          fetch('http://localhost:5000/api/v1/categories/'),
+          fetch(buildApiUrl('/deals')),
+          fetch(buildApiUrl('/categories/')),
         ])
 
         if (!dealsResponse.ok) {
@@ -546,16 +547,13 @@ function DealsPage() {
         ]),
       )
 
-      const response = await fetch(
-        `http://localhost:5000/api/v1/deals/${editingDeal._id}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
+      const response = await fetch(buildApiUrl(`/deals/${editingDeal._id}`), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      )
+        body: JSON.stringify(payload),
+      })
 
       let responseData: unknown = null
 
@@ -620,7 +618,7 @@ function DealsPage() {
         ]),
       )
 
-      const response = await fetch('http://localhost:5000/api/v1/deals', {
+      const response = await fetch(buildApiUrl('/deals'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -684,12 +682,9 @@ function DealsPage() {
       setDeleteErrorMessage('')
       setDeleteSuccessMessage('')
 
-      const response = await fetch(
-        `http://localhost:5000/api/v1/deals/${deletingDeal._id}`,
-        {
-          method: 'DELETE',
-        },
-      )
+      const response = await fetch(buildApiUrl(`/deals/${deletingDeal._id}`), {
+        method: 'DELETE',
+      })
 
       let responseData: unknown = null
 

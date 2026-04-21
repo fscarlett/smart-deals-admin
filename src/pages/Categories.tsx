@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { buildApiUrl } from '../api'
+
 interface Category {
   _id: string
   category_slug: string
@@ -16,7 +18,7 @@ function CategoriesPage() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/v1/categories/')
+        const response = await fetch(buildApiUrl('/categories/'))
         const data = await response.json()
         console.log(data)
         const sorted = [...data.data].sort(
@@ -38,7 +40,7 @@ function CategoriesPage() {
         {categories.map((cat) => (
           <li
             key={cat._id}
-            className='text-sm flex flex-col gap-6 py-3 mb-8 border-b-1 border-gray-600'
+            className='text-sm flex flex-col gap-6 py-3 mb-8 border-b border-gray-600'
           >
             <div className='text-sm flex flex-wrap gap-6 py-3'>
               <span>
