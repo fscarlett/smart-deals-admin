@@ -38,7 +38,19 @@ function CategoriesPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteSuccessMessage, setDeleteSuccessMessage] = useState('')
   const [deleteErrorMessage, setDeleteErrorMessage] = useState('')
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [createFormValues, setCreateFormValues] = useState<EditFormValues>({
+    category_display_name: '',
+    category_slug: '',
+    category_order: '',
+    is_active: true,
+  })
+  const [isCreating, setIsCreating] = useState(false)
+  const [highlightedCategoryId, setHighlightedCategoryId] = useState('')
+  const [createSuccessMessage, setCreateSuccessMessage] = useState('')
+  const [createErrorMessage, setCreateErrorMessage] = useState('')
   const modalBodyRef = useRef<HTMLDivElement | null>(null)
+  const createModalBodyRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -56,6 +68,106 @@ function CategoriesPage() {
 
     fetchCategories()
   }, [])
+
+  function openCreateModal() {
+    setIsCreateModalOpen(true)
+    setCreateFormValues({
+      category_display_name: '',
+      category_slug: '',
+      category_order: '',
+      is_active: true,
+    })
+    setCreateSuccessMessage('')
+    setCreateErrorMessage('')
+  }
+
+  function closeCreateModal() {
+    setIsCreateModalOpen(false)
+    setIsCreating(false)
+    setCreateSuccessMessage('')
+    setCreateErrorMessage('')
+  }
+
+  async function handleCreate() {
+    createModalBodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+
+    try {
+      setIsCreating(true)
+      setCreateSuccessMessage('')
+      setCreateErrorMessage('')
+
+      const parsedOrder = Number(createFormValues.category_order)
+
+      if (Number.isNaN(parsedOrder)) {
+        throw new Error('Order must be a valid number.')
+      }
+
+      const payload = {
+        category_display_name: createFormValues.category_display_name,
+        category_slug: createFormValues.category_slug,
+        category_order: parsedOrder,
+        is_active: createFormValues.is_active,
+      }
+
+      const response = await fetch(buildApiUrl('/categories/'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      let responseData: unknown = null
+
+      try {
+        responseData = await response.json()
+      } catch {
+        responseData = null
+      }
+
+      if (!response.ok) {
+        const responseMessage =
+          responseData &&
+          typeof responseData === 'object' &&
+          'message' in responseData &&
+          typeof responseData.message === 'string'
+            ? responseData.message
+            : 'Failed to create the category.'
+
+        throw new Error(responseMessage)
+      }
+
+      const createdCategory: Category =
+        responseData &&
+        typeof responseData === 'object' &&
+        'data' in responseData &&
+        responseData.data &&
+        typeof responseData.data === 'object'
+          ? (responseData.data as Category)
+          : ({
+              ...payload,
+              _id: '',
+              createdAt: '',
+              updatedAt: '',
+              __v: 0,
+            } as Category)
+
+      setCategories((current) =>
+        [...current, createdCategory].sort(
+          (a, b) => a.category_order - b.category_order,
+        ),
+      )
+      setHighlightedCategoryId(createdCategory._id)
+      closeCreateModal()
+    } catch (error) {
+      console.error('Failed to create category:', error)
+      setCreateErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Failed to create the category.',
+      )
+    } finally {
+      setIsCreating(false)
+    }
+  }
 
   function openEditModal(cat: Category) {
     setEditingCategory(cat)
@@ -229,12 +341,28 @@ function CategoriesPage() {
 
   return (
     <div className='container'>
-      <h1 className='text-2xl font-bold mb-6 mt-6'>Categories</h1>
+      <div className='flex flex-col gap-2 mb-6 mt-6 sm:flex-row sm:items-end sm:justify-between'>
+        <div>
+          <h1 className='text-2xl font-bold'>Categories</h1>
+          <p className='text-sm text-gray-400'>Displaying category records.</p>
+          <div className='mt-4'>
+            <button
+              type='button'
+              className='rounded-md bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-gray-200'
+              onClick={openCreateModal}
+            >
+              Create New Category
+            </button>
+          </div>
+        </div>
+      </div>
       <ul className='list-none p-0 m-0'>
         {categories.map((cat) => (
           <li
             key={cat._id}
-            className='text-sm flex flex-col gap-6 py-3 mb-8 border-b border-gray-600'
+            className={`text-sm flex flex-col gap-6 py-3 mb-8 border-b border-gray-600 transition-colors ${
+              cat._id === highlightedCategoryId ? 'bg-cyan-800/50' : ''
+            }`}
           >
             <div className='flex items-start justify-between gap-4'>
               <div className='text-sm flex flex-wrap gap-6'>
@@ -404,6 +532,136 @@ function CategoriesPage() {
                   disabled={isSaving}
                 >
                   {isSaving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {isCreateModalOpen ? (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-8'>
+          <div className='w-full max-w-lg rounded-xl border border-gray-700 bg-gray-950 shadow-2xl'>
+            <div className='flex items-center justify-between border-b border-gray-800 px-6 py-4'>
+              <div>
+                <h2 className='text-xl font-semibold'>Create Category</h2>
+                <p className='text-sm text-gray-400'>
+                  Add a new category record.
+                </p>
+              </div>
+              <button
+                type='button'
+                className='rounded-md border border-gray-700 px-3 py-2 text-sm text-gray-200 hover:bg-gray-900'
+                onClick={closeCreateModal}
+              >
+                Close
+              </button>
+            </div>
+
+            <form
+              onSubmit={(event) => {
+                event.preventDefault()
+                void handleCreate()
+              }}
+            >
+              <div
+                ref={createModalBodyRef}
+                className='max-h-[75vh] overflow-y-auto px-6 py-5'
+              >
+                {createSuccessMessage ? (
+                  <div className='mb-4 rounded-md border border-green-700 bg-green-950 px-4 py-3 text-sm text-green-300'>
+                    {createSuccessMessage}
+                  </div>
+                ) : null}
+
+                {createErrorMessage ? (
+                  <div className='mb-4 rounded-md border border-red-700 bg-red-950 px-4 py-3 text-sm text-red-300'>
+                    {createErrorMessage}
+                  </div>
+                ) : null}
+
+                <div className='flex flex-col gap-5'>
+                  <label className='flex flex-col gap-2 text-sm'>
+                    <span className='font-semibold text-gray-200'>
+                      Name <span className='text-red-400'>*</span>
+                    </span>
+                    <input
+                      type='text'
+                      className='rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-white outline-none focus:border-gray-500'
+                      value={createFormValues.category_display_name}
+                      onChange={(event) =>
+                        setCreateFormValues((v) => ({
+                          ...v,
+                          category_display_name: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <label className='flex flex-col gap-2 text-sm'>
+                    <span className='font-semibold text-gray-200'>
+                      Slug <span className='text-red-400'>*</span>
+                    </span>
+                    <input
+                      type='text'
+                      className='rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-white outline-none focus:border-gray-500'
+                      value={createFormValues.category_slug}
+                      onChange={(event) =>
+                        setCreateFormValues((v) => ({
+                          ...v,
+                          category_slug: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <label className='flex flex-col gap-2 text-sm'>
+                    <span className='font-semibold text-gray-200'>Order</span>
+                    <input
+                      type='number'
+                      step='1'
+                      className='rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-white outline-none focus:border-gray-500'
+                      value={createFormValues.category_order}
+                      onChange={(event) =>
+                        setCreateFormValues((v) => ({
+                          ...v,
+                          category_order: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <label className='flex items-center gap-3 text-sm'>
+                    <input
+                      type='checkbox'
+                      className='h-4 w-4 rounded border-gray-600 bg-gray-900 accent-white'
+                      checked={createFormValues.is_active}
+                      onChange={(event) =>
+                        setCreateFormValues((v) => ({
+                          ...v,
+                          is_active: event.target.checked,
+                        }))
+                      }
+                    />
+                    <span className='font-semibold text-gray-200'>Active</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className='flex items-center justify-end gap-3 border-t border-gray-800 px-6 py-4'>
+                <button
+                  type='button'
+                  className='rounded-md border border-gray-700 px-4 py-2 text-sm text-gray-200 hover:bg-gray-900'
+                  onClick={closeCreateModal}
+                >
+                  Cancel
+                </button>
+                <button
+                  type='submit'
+                  className='rounded-md bg-white px-4 py-2 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:opacity-60'
+                  disabled={isCreating}
+                >
+                  {isCreating ? 'Creating...' : 'Create Category'}
                 </button>
               </div>
             </form>

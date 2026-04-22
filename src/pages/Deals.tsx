@@ -761,7 +761,7 @@ function DealsPage() {
               <li
                 key={deal._id}
                 className={`border-b border-gray-600 py-4 transition-colors ${
-                  deal._id === highlightedDealId ? 'bg-gray-800/50' : ''
+                  deal._id === highlightedDealId ? 'bg-cyan-950/85' : ''
                 }`}
               >
                 <div className='mb-2 flex items-start justify-between gap-4'>
