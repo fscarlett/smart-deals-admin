@@ -32,6 +32,12 @@ function CategoriesPage() {
   const [isEditCancelVisible, setIsEditCancelVisible] = useState(true)
   const [saveSuccessMessage, setSaveSuccessMessage] = useState('')
   const [saveErrorMessage, setSaveErrorMessage] = useState('')
+  const [deletingCategory, setDeletingCategory] = useState<Category | null>(
+    null,
+  )
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteSuccessMessage, setDeleteSuccessMessage] = useState('')
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState('')
   const modalBodyRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -74,6 +80,72 @@ function CategoriesPage() {
 
   function handleFieldFocus() {
     setIsEditCancelVisible(true)
+  }
+
+  function openDeleteModal(cat: Category) {
+    setDeletingCategory(cat)
+    setDeleteSuccessMessage('')
+    setDeleteErrorMessage('')
+  }
+
+  function closeDeleteModal() {
+    setDeletingCategory(null)
+    setIsDeleting(false)
+    setDeleteSuccessMessage('')
+    setDeleteErrorMessage('')
+  }
+
+  async function handleDelete() {
+    if (!deletingCategory) {
+      return
+    }
+
+    try {
+      setIsDeleting(true)
+      setDeleteSuccessMessage('')
+      setDeleteErrorMessage('')
+
+      const response = await fetch(
+        buildApiUrl(`/categories/${deletingCategory._id}`),
+        { method: 'DELETE' },
+      )
+
+      let responseData: unknown = null
+
+      try {
+        responseData = await response.json()
+      } catch {
+        responseData = null
+      }
+
+      if (!response.ok) {
+        const responseMessage =
+          responseData &&
+          typeof responseData === 'object' &&
+          'message' in responseData &&
+          typeof responseData.message === 'string'
+            ? responseData.message
+            : 'Failed to delete the category.'
+
+        throw new Error(responseMessage)
+      }
+
+      setCategories((current) =>
+        current.filter((c) => c._id !== deletingCategory._id),
+      )
+      setDeleteSuccessMessage(
+        `${deletingCategory.category_display_name} deleted!`,
+      )
+    } catch (error) {
+      console.error('Failed to delete category:', error)
+      setDeleteErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete the category.',
+      )
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   async function handleSave() {
@@ -165,7 +237,7 @@ function CategoriesPage() {
             className='text-sm flex flex-col gap-6 py-3 mb-8 border-b border-gray-600'
           >
             <div className='flex items-start justify-between gap-4'>
-              <div className='text-sm flex flex-wrap gap-6 py-3'>
+              <div className='text-sm flex flex-wrap gap-6'>
                 <span>
                   <strong>ID:</strong> {cat._id}
                 </span>
@@ -182,13 +254,22 @@ function CategoriesPage() {
                   <strong>Active:</strong> {cat.is_active ? 'Yes' : 'No'}
                 </span>
               </div>
-              <button
-                type='button'
-                className='shrink-0 rounded-md border border-gray-600 px-3 py-2 text-sm font-medium text-white hover:bg-gray-800'
-                onClick={() => openEditModal(cat)}
-              >
-                Edit
-              </button>
+              <div className='flex shrink-0 flex-col items-stretch gap-6'>
+                <button
+                  type='button'
+                  className='rounded-md border border-gray-600 px-3 py-2 text-sm font-medium text-white hover:bg-gray-800'
+                  onClick={() => openEditModal(cat)}
+                >
+                  Edit
+                </button>
+                <button
+                  type='button'
+                  className='rounded-md border border-red-700 px-3 py-2 text-sm font-medium text-red-300 hover:bg-red-950/40'
+                  onClick={() => openDeleteModal(cat)}
+                >
+                  Delete
+                </button>
+              </div>
             </div>
             <div className='text-xs italic gap-4 flex flex-wrap'>
               <span>Created: {new Date(cat.createdAt).toLocaleString()} </span>
@@ -326,6 +407,76 @@ function CategoriesPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {deletingCategory ? (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-8'>
+          <div className='w-full max-w-xl rounded-xl border border-gray-700 bg-gray-950 shadow-2xl'>
+            <div className='flex items-center justify-between border-b border-gray-800 px-6 py-4'>
+              <h2 className='text-xl font-semibold'>
+                Delete the {deletingCategory.category_display_name} Category?
+              </h2>
+              <button
+                type='button'
+                className='rounded-md border border-gray-700 px-3 py-2 text-sm text-gray-200 hover:bg-gray-900'
+                onClick={closeDeleteModal}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className='px-6 py-5'>
+              {deleteSuccessMessage ? (
+                <div className='mb-4 rounded-md border border-green-700 bg-green-950 px-4 py-3 text-sm text-green-300'>
+                  {deleteSuccessMessage}
+                </div>
+              ) : null}
+
+              {deleteErrorMessage ? (
+                <div className='mb-4 rounded-md border border-red-700 bg-red-950 px-4 py-3 text-sm text-red-300'>
+                  {deleteErrorMessage}
+                </div>
+              ) : null}
+
+              <div className='space-y-2 text-sm text-gray-300'>
+                <p>
+                  <span className='font-semibold text-gray-200'>
+                    Record ID:
+                  </span>{' '}
+                  <span>{deletingCategory._id}</span>
+                </p>
+                <p>
+                  <span className='font-semibold text-gray-200'>Slug:</span>{' '}
+                  <span>{deletingCategory.category_slug}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className='flex items-center justify-end gap-3 border-t border-gray-800 px-6 py-4'>
+              {!deleteSuccessMessage ? (
+                <button
+                  type='button'
+                  className='rounded-md border border-gray-700 px-4 py-2 text-sm text-gray-200 hover:bg-gray-900'
+                  onClick={closeDeleteModal}
+                >
+                  Cancel
+                </button>
+              ) : null}
+              {!deleteSuccessMessage ? (
+                <button
+                  type='button'
+                  className='rounded-md bg-red-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60'
+                  onClick={() => {
+                    void handleDelete()
+                  }}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete Forever'}
+                </button>
+              ) : null}
+            </div>
           </div>
         </div>
       ) : null}
