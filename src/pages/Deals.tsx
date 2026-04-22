@@ -389,6 +389,7 @@ function DealsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isEditCancelVisible, setIsEditCancelVisible] = useState(true)
   const [saveErrorMessage, setSaveErrorMessage] = useState('')
   const [saveSuccessMessage, setSaveSuccessMessage] = useState('')
   const [createErrorMessage, setCreateErrorMessage] = useState('')
@@ -496,6 +497,7 @@ function DealsPage() {
   function openEditModal(deal: DealRecord) {
     setEditingDeal(deal)
     setFormValues(createFormValues(deal))
+    setIsEditCancelVisible(true)
     setSaveErrorMessage('')
     setSaveSuccessMessage('')
   }
@@ -504,8 +506,13 @@ function DealsPage() {
     setEditingDeal(null)
     setFormValues({})
     setIsSaving(false)
+    setIsEditCancelVisible(true)
     setSaveErrorMessage('')
     setSaveSuccessMessage('')
+  }
+
+  function handleEditFieldFocus() {
+    setIsEditCancelVisible(true)
   }
 
   function openDeleteModal(deal: DealRecord) {
@@ -593,6 +600,7 @@ function DealsPage() {
       setEditingDeal(updatedDealFromResponse)
       setFormValues(createFormValues(updatedDealFromResponse))
       setSaveSuccessMessage('Your edits were saved')
+      setIsEditCancelVisible(false)
     } catch (error) {
       console.error('Failed to save deal edits:', error)
       setSaveErrorMessage(
@@ -1105,6 +1113,7 @@ function DealsPage() {
                             onChange={(event) =>
                               handleFieldChange(field.name, event.target.value)
                             }
+                            onFocus={handleEditFieldFocus}
                           >
                             <option value=''>Select a category</option>
                             {categories.map((category) => (
@@ -1124,6 +1133,7 @@ function DealsPage() {
                                 event.target.checked,
                               )
                             }
+                            onFocus={handleEditFieldFocus}
                           />
                         ) : field.type === 'textarea' ? (
                           <textarea
@@ -1136,6 +1146,7 @@ function DealsPage() {
                             onChange={(event) =>
                               handleFieldChange(field.name, event.target.value)
                             }
+                            onFocus={handleEditFieldFocus}
                           />
                         ) : field.type === 'select' ? (
                           <select
@@ -1148,6 +1159,7 @@ function DealsPage() {
                             onChange={(event) =>
                               handleFieldChange(field.name, event.target.value)
                             }
+                            onFocus={handleEditFieldFocus}
                           >
                             {field.options?.map((option) => (
                               <option key={option || 'empty'} value={option}>
@@ -1174,6 +1186,7 @@ function DealsPage() {
                             onChange={(event) =>
                               handleFieldChange(field.name, event.target.value)
                             }
+                            onFocus={handleEditFieldFocus}
                           />
                         )}
                       </label>
@@ -1202,13 +1215,15 @@ function DealsPage() {
               </div>
 
               <div className='flex items-center justify-end gap-3 border-t border-gray-800 px-6 py-4'>
-                <button
-                  type='button'
-                  className='rounded-md border border-gray-700 px-4 py-2 text-sm text-gray-200 hover:bg-gray-900'
-                  onClick={closeEditModal}
-                >
-                  Cancel
-                </button>
+                {isEditCancelVisible ? (
+                  <button
+                    type='button'
+                    className='rounded-md border border-gray-700 px-4 py-2 text-sm text-gray-200 hover:bg-gray-900'
+                    onClick={closeEditModal}
+                  >
+                    Cancel
+                  </button>
+                ) : null}
                 <button
                   type='submit'
                   className='rounded-md bg-white px-4 py-2 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:opacity-60'
