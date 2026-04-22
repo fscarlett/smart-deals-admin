@@ -96,12 +96,12 @@ const HIDDEN_FIELDS = new Set([
 
 const INLINE_FIELD_LABELS: Record<string, string> = {
   merchant_display_name: 'Merchant',
+  category: 'Category',
   is_in_hero: 'Hero',
   is_featured: 'Featured',
   is_featured_secondary: 'Secondary Featured',
   deal_cashback_percent: 'Cashback',
   deal_pill_text: 'Pill Text',
-  category: 'Category',
   isActive: 'Active',
   coupon_type: 'Coupon',
   startDate: 'Start',
@@ -774,7 +774,15 @@ function DealsPage() {
                         <span className='font-semibold text-gray-300'>
                           {formatFieldLabel(fieldName)}:
                         </span>
-                        <span className='text-white'>
+                        <span
+                          className={
+                            fieldName === 'merchant_display_name' ||
+                            fieldName === 'category' ||
+                            fieldName === 'isActive'
+                              ? 'text-white font-bold text-base'
+                              : 'text-white'
+                          }
+                        >
                           {formatFieldValue(fieldName, deal[fieldName])}
                         </span>
                       </div>
