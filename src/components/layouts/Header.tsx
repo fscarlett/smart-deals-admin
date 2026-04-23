@@ -53,14 +53,7 @@ function Header() {
                   >
                     Dashboard
                   </NavLink>
-                  <NavLink
-                    to='/categories'
-                    className={({ isActive }) =>
-                      isActive ? styles.active_link : styles.default_link
-                    }
-                  >
-                    Categories
-                  </NavLink>
+
                   <NavLink
                     to='/deals'
                     className={({ isActive }) =>
@@ -68,6 +61,15 @@ function Header() {
                     }
                   >
                     Deals
+                  </NavLink>
+
+                  <NavLink
+                    to='/categories'
+                    className={({ isActive }) =>
+                      isActive ? styles.active_link : styles.default_link
+                    }
+                  >
+                    Categories
                   </NavLink>
                 </nav>
               </div>

@@ -10,7 +10,7 @@
 
 .logo:hover {
   background-color: #555;
-  color: #fff;
+  /* color: #fff; */
   text-decoration: underline;
 }
 

@@ -739,7 +739,7 @@ function DealsPage() {
           <div className='mt-4'>
             <button
               type='button'
-              className='rounded-md bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-gray-200'
+              className='rounded-md bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-cyan-200'
               onClick={openCreateModal}
             >
               Create New Deal
@@ -792,14 +792,14 @@ function DealsPage() {
                   <div className='flex shrink-0 flex-col items-stretch gap-6'>
                     <button
                       type='button'
-                      className='rounded-md border border-gray-600 px-3 py-2 text-sm font-medium text-white hover:bg-gray-800'
+                      className='rounded-md border border-gray-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700'
                       onClick={() => openEditModal(deal)}
                     >
                       Edit
                     </button>
                     <button
                       type='button'
-                      className='rounded-md border border-red-700 px-3 py-2 text-sm font-medium text-red-300 hover:bg-red-950/40'
+                      className='rounded-md border border-red-700 px-3 py-2 text-sm font-medium text-red-300 hover:bg-red-600'
                       onClick={() => openDeleteModal(deal)}
                     >
                       Delete
@@ -1045,7 +1045,7 @@ function DealsPage() {
                 </button>
                 <button
                   type='submit'
-                  className='rounded-md bg-white px-4 py-2 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:opacity-60'
+                  className='rounded-md bg-white px-4 py-2 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:opacity-60 hover:bg-green-600'
                   disabled={isCreating}
                 >
                   {isCreating ? 'Creating...' : 'Create Deal'}
@@ -1234,7 +1234,7 @@ function DealsPage() {
                 ) : null}
                 <button
                   type='submit'
-                  className='rounded-md bg-white px-4 py-2 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:opacity-60'
+                  className='rounded-md bg-white px-4 py-2 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:opacity-60 hover:bg-green-600'
                   disabled={isSaving}
                 >
                   {isSaving ? 'Saving...' : 'Save'}
@@ -1255,7 +1255,7 @@ function DealsPage() {
               </h2>
               <button
                 type='button'
-                className='rounded-md border border-gray-700 px-3 py-2 text-sm text-gray-200 hover:bg-gray-900'
+                className='rounded-md border border-gray-700 px-3 py-2 text-sm text-gray-200 hover:bg-gray-800'
                 onClick={closeDeleteModal}
               >
                 Close
@@ -1304,7 +1304,7 @@ function DealsPage() {
               {!deleteSuccessMessage ? (
                 <button
                   type='button'
-                  className='rounded-md bg-red-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60'
+                  className='rounded-md bg-red-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 hover:bg-red-500'
                   onClick={() => {
                     void handleDeleteDeal()
                   }}
